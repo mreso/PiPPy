@@ -14,6 +14,12 @@ prompts = (
     "How do you", "I like to", "Can I help", "You need to",
     "The weather is", "I found a", "What is your", "You are so",
 )  # bs = 8
+
+prompts2 = (
+    "What", "Who", "Why", "When",
+    "What", "Who", "Why", "When",
+)  # bs = 8
+
 tokenizer.pad_token = tokenizer.eos_token
 
 rank = int(os.environ["RANK"])
@@ -35,15 +41,17 @@ llama_pipe = Pipe.from_tracing(llama, world_size, example_args=(inputs["input_id
 torch.distributed.init_process_group(rank=rank, world_size=world_size)
 stage = PipelineStage(llama_pipe, rank, device=device)
 
+inputs2 = tokenizer(prompts2, return_tensors="pt", padding=True).to(device)
+
 # Run
 if rank == 0:
-    args = inputs["input_ids"]
+    args = inputs2["input_ids"]
 else:
     args = None
-output = stage(args)
+output2 = stage(args)
 
 # Decode
-if output is not None:
-    next_token_logits = output[0][:, -1, :]
+if output2 is not None:
+    next_token_logits = output2[0][:, -1, :]
     next_token = torch.argmax(next_token_logits, dim=-1)
     print(tokenizer.batch_decode(next_token))
